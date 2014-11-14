@@ -14,6 +14,7 @@ from urlparse import urljoin
 SITE_URL="http://www.corinthians.com.br"
 CAL_URL="site/inc/ajax/jogos/getJogos.asp?mes=%d&ano=2014"
 CSV_FILENAME="/tmp/corinthians-cal.csv"
+ICAL_FILENAME="/tmp/corinthians-ical.ical"
 
 
 def fetch_url(url):
@@ -40,10 +41,8 @@ def parse_content(content):
     return contents
 
 
-def convert_ical(cal_data):
+def convert_ical(cal_data, ical_filename=None):
     """Convert cal_data to ical format."""
-    # TODO:
-    # - need to fix up TZ information for ical
     ical = Calendar()
     tz = pytz.timezone('America/Sao_Paulo')
     for k in cal_data.keys():
@@ -59,6 +58,10 @@ def convert_ical(cal_data):
         event.add('description', vText(urljoin(SITE_URL, k)))
         event.add('location', game_data['location'])
         ical.add_component(event)
+    if ical_filename:
+        f = open(ical_filename, 'wb')
+        f.write(ical.to_ical())
+        f.close()
     return ical.to_ical()
 
 
@@ -106,9 +109,7 @@ def main(argv):
         parsed_content = parse_content(html_content)
         full_year.update(parsed_content)
     convert_csv(full_year)
-    f = open('/tmp/ical.ical', 'wb')
-    f.write(convert_ical(full_year))
-    f.close()
+    convert_ical(full_year, ical_filename=ICAL_FILENAME)
 
 
 if __name__ == "__main__":
