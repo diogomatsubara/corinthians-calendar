@@ -23,7 +23,9 @@ class TestCalendarConverter(TestCase):
                 'hour': u'0h00',
                 'location': u'A definir',
                 'team_one': u'Fluminense',
-                'team_two': u'Corinthians'
+                'team_one_score': '',
+                'team_two': u'Corinthians',
+                'team_two_score': ''
             }
         }
         sample_data = open('sample.html').read()

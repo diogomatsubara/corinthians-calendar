@@ -34,8 +34,12 @@ def parse_content(content):
         game_data['day'] = info.findChildren()[0].text.split()[1].encode('utf8')
         game_data['hour'] = info.findChildren()[2].text.split()[1].encode('utf8')
         game_data['location'] = info.findChildren()[4].text.replace('Local:', '').strip().encode('utf8')
-        game_data['team_one'] = teams.find_all('img')[0].get('alt').encode('utf8')
-        game_data['team_two'] = teams.find_all('img')[1].get('alt').encode('utf8')
+        game_data['team_one'] = teams.find('img', class_="team-one").get('alt').encode('utf8')
+        game_data['team_two'] = teams.find('img', class_="team-two").get('alt').encode('utf8')
+        game_data['team_one_score'] = teams.find(
+            'div', class_="team-one-score").text.strip().encode('utf8')
+        game_data['team_two_score'] = teams.find(
+            'div', class_="team-two-score").text.strip().encode('utf8')
         link = item.find('a').get('href')
         contents[link] = game_data
     return contents
@@ -53,8 +57,14 @@ def convert_ical(cal_data, ical_filename=None):
         end_date = start_date + timedelta(hours=2)
         event.add('dtstart', start_date.replace(tzinfo=tz))
         event.add('dtend', end_date.replace(tzinfo=tz))
-        event.add('summary', "%s vs %s" % (
-            game_data['team_one'], game_data['team_two']))
+        if game_data['team_one_score'] or game_data['team_two_score']:
+            summary = "%s (%s) vs (%s) %s"  % (
+                game_data['team_one'], game_data['team_one_score'],
+                game_data['team_two_score'], game_data['team_two'])
+        else:
+            summary = "%s vs %s" % (
+                game_data['team_one'], game_data['team_two'])
+        event.add('summary', summary)
         event.add('description', vText(urljoin(SITE_URL, k)))
         event.add('location', game_data['location'])
         ical.add_component(event)
