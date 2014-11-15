@@ -16,6 +16,8 @@ CAL_URL="site/inc/ajax/jogos/getJogos.asp?mes=%d&ano=2014"
 CSV_FILENAME="/tmp/corinthians-cal.csv"
 ICAL_FILENAME="/tmp/corinthians-ical.ical"
 
+tz = pytz.timezone('America/Sao_Paulo')
+
 
 def fetch_url(url):
     """Fetch the given URL and return its HTML."""
@@ -33,8 +35,10 @@ def parse_content(content):
         game_data = dict()
         day = info.findChildren()[0].text.split()[1].encode('utf8')
         hour = info.findChildren()[2].text.split()[1].encode('utf8')
-        game_data['dtstart'] = parse_date(day, hour)
-        game_data['dtend'] = parse_date(day, hour) + timedelta(hours=2)
+        dtstart = parse_date(day, hour)
+        game_data['dtstart'] = dtstart.replace(tzinfo=tz)
+        dtend = dtstart + timedelta(hours=2)
+        game_data['dtend'] = dtend.replace(tzinfo=tz)
         game_data['location'] = info.findChildren()[4].text.replace('Local:', '').strip().encode('utf8')
         game_data['team_one'] = teams.find('img', class_="team-one").get('alt').encode('utf8')
         game_data['team_two'] = teams.find('img', class_="team-two").get('alt').encode('utf8')
@@ -67,15 +71,12 @@ def get_summary(game_data):
 def convert_ical(cal_data, ical_filename=None):
     """Convert cal_data to ical format."""
     ical = Calendar()
-    tz = pytz.timezone('America/Sao_Paulo')
     for k in cal_data.keys():
         event = Event()
         event['uid'] = k
         game_data = cal_data[k]
-        start_date = game_data['dtstart']
-        end_date = game_data['dtend']
-        event.add('dtstart', start_date.replace(tzinfo=tz))
-        event.add('dtend', end_date.replace(tzinfo=tz))
+        event.add('dtstart', game_data['dtstart'])
+        event.add('dtend', game_data['dtend'])
         event.add('summary', get_summary(game_data))
         event.add('description', vText(urljoin(SITE_URL, k)))
         event.add('location', game_data['location'])

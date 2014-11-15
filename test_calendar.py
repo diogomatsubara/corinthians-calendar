@@ -1,6 +1,7 @@
 import datetime
 import doctest
 import os.path
+import pytz
 from tempfile import NamedTemporaryFile
 
 from testtools import TestCase
@@ -8,8 +9,13 @@ from testtools.matchers import DocTestMatches, Contains
 
 from corinthians_calendar import fetch_url, parse_content, convert_csv, convert_ical
 
+tz = pytz.timezone('America/Sao_Paulo')
 
 class TestCalendarConverter(TestCase):
+
+    def setUp(self):
+        super(TestCalendarConverter, self).setUp()
+        self.sample_data = open('sample.html').read()
 
     def test_fetch_url(self):
         fake_url = 'file://%s/sample.html' % os.path.dirname(__file__)
@@ -20,8 +26,8 @@ class TestCalendarConverter(TestCase):
     def test_parse_content(self):
         expected_content = {
             '/site/futebol/jogos/informacoes/?id=510': {
-                'dtstart': datetime.datetime(2014, 11, 30, 0, 0),
-                'dtend': datetime.datetime(2014,11,30, 2, 0),
+                'dtstart': datetime.datetime(2014, 11, 30, 0, 0, tzinfo=tz),
+                'dtend': datetime.datetime(2014,11,30, 2, 0, tzinfo=tz),
                 'location': u'A definir',
                 'team_one': u'Fluminense',
                 'team_one_score': '',
@@ -29,14 +35,12 @@ class TestCalendarConverter(TestCase):
                 'team_two_score': ''
             }
         }
-        sample_data = open('sample.html').read()
-        contents = parse_content(sample_data)
+        contents = parse_content(self.sample_data)
         content_key = expected_content.keys()[0]
         self.assertEquals(contents[content_key], expected_content[content_key])
 
     def test_convert_ical(self):
-        sample_data = open('sample.html').read()
-        ical = convert_ical(parse_content(sample_data))
+        ical = convert_ical(parse_content(self.sample_data))
         expected_ical = ("""
             BEGIN:VCALENDAR
             ...
@@ -62,10 +66,9 @@ class TestCalendarConverter(TestCase):
             'End Date', 'End Time', 'All Day Event',
             'Description', 'Location', 'Private'
         )
-        sample_data = open('sample.html').read()
         tmp_file = NamedTemporaryFile()
         csv_writer= convert_csv(
-            parse_content(sample_data), csv_filename=tmp_file.name)
+            parse_content(self.sample_data), csv_filename=tmp_file.name)
         self.assertEquals(csv_writer.fieldnames, csv_header)
         expected_content = (
             "/site/futebol/jogos/informacoes/?id=506")
