@@ -1,3 +1,4 @@
+import datetime
 import doctest
 import os.path
 from tempfile import NamedTemporaryFile
@@ -19,8 +20,8 @@ class TestCalendarConverter(TestCase):
     def test_parse_content(self):
         expected_content = {
             '/site/futebol/jogos/informacoes/?id=510': {
-                'day': u'30/11/14',
-                'hour': u'0h00',
+                'dtstart': datetime.datetime(2014, 11, 30, 0, 0),
+                'dtend': datetime.datetime(2014,11,30, 2, 0),
                 'location': u'A definir',
                 'team_one': u'Fluminense',
                 'team_one_score': '',

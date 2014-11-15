@@ -31,8 +31,10 @@ def parse_content(content):
         info = item.find('div', class_='info')
         teams = item.find('div', class_='teams')
         game_data = dict()
-        game_data['day'] = info.findChildren()[0].text.split()[1].encode('utf8')
-        game_data['hour'] = info.findChildren()[2].text.split()[1].encode('utf8')
+        day = info.findChildren()[0].text.split()[1].encode('utf8')
+        hour = info.findChildren()[2].text.split()[1].encode('utf8')
+        game_data['dtstart'] = parse_date(day, hour)
+        game_data['dtend'] = parse_date(day, hour) + timedelta(hours=2)
         game_data['location'] = info.findChildren()[4].text.replace('Local:', '').strip().encode('utf8')
         game_data['team_one'] = teams.find('img', class_="team-one").get('alt').encode('utf8')
         game_data['team_two'] = teams.find('img', class_="team-two").get('alt').encode('utf8')
@@ -45,6 +47,23 @@ def parse_content(content):
     return contents
 
 
+def parse_date(date, time):
+    """For a given date and time return parsed datetime."""
+    dt = ','.join((date, time))
+    return datetime.strptime(dt, "%d/%m/%y,%Hh%M")
+
+
+def get_summary(game_data):
+    if game_data['team_one_score'] or game_data['team_two_score']:
+        summary = "%s (%s) vs (%s) %s"  % (
+            game_data['team_one'], game_data['team_one_score'],
+            game_data['team_two_score'], game_data['team_two'])
+    else:
+        summary = "%s vs %s" % (
+            game_data['team_one'], game_data['team_two'])
+    return summary
+
+
 def convert_ical(cal_data, ical_filename=None):
     """Convert cal_data to ical format."""
     ical = Calendar()
@@ -53,18 +72,11 @@ def convert_ical(cal_data, ical_filename=None):
         event = Event()
         event['uid'] = k
         game_data = cal_data[k]
-        start_date = parse_date(game_data['day'], game_data['hour'])
-        end_date = start_date + timedelta(hours=2)
+        start_date = game_data['dtstart']
+        end_date = game_data['dtend']
         event.add('dtstart', start_date.replace(tzinfo=tz))
         event.add('dtend', end_date.replace(tzinfo=tz))
-        if game_data['team_one_score'] or game_data['team_two_score']:
-            summary = "%s (%s) vs (%s) %s"  % (
-                game_data['team_one'], game_data['team_one_score'],
-                game_data['team_two_score'], game_data['team_two'])
-        else:
-            summary = "%s vs %s" % (
-                game_data['team_one'], game_data['team_two'])
-        event.add('summary', summary)
+        event.add('summary', get_summary(game_data))
         event.add('description', vText(urljoin(SITE_URL, k)))
         event.add('location', game_data['location'])
         ical.add_component(event)
@@ -73,12 +85,6 @@ def convert_ical(cal_data, ical_filename=None):
         f.write(ical.to_ical())
         f.close()
     return ical.to_ical()
-
-
-def parse_date(date, time):
-    """For a given date and time return parsed datetime."""
-    dt = ','.join((date, time))
-    return datetime.strptime(dt, "%d/%m/%y,%Hh%M")
 
 
 def convert_csv(cal_data, csv_filename=CSV_FILENAME):
@@ -93,10 +99,10 @@ def convert_csv(cal_data, csv_filename=CSV_FILENAME):
     writer.writeheader()
     for k in cal_data.keys():
         game_data = cal_data[k]
-        start_date = parse_date(game_data['day'], game_data['hour'])
-        end_date = start_date + timedelta(hours=2)
+        start_date = game_data['dtstart']
+        end_date = game_data['dtend']
         row = {
-            'Subject': "%(team_one)s vs %(team_two)s" % game_data,
+            'Subject': "%s" % get_summary(game_data),
             'Start Date': '%s' % start_date.strftime('%d/%m/%y'),
             'Start Time': '%s' % start_date.strftime('%H:%M'),
             'End Date': '%s' % end_date.strftime('%d/%m/%y'),
