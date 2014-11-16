@@ -12,7 +12,7 @@ from urlparse import urljoin
 
 
 SITE_URL="http://www.corinthians.com.br"
-CAL_URL="site/inc/ajax/jogos/getJogos.asp?mes=%d&ano=2014"
+CAL_URL="site/inc/ajax/jogos/getJogos.asp?mes=%d&ano=%d"
 CSV_FILENAME="/tmp/corinthians-cal.csv"
 ICAL_FILENAME="/tmp/corinthians-ical.ical"
 
@@ -30,6 +30,8 @@ def parse_content(content):
     contents = {}
     soup = BeautifulSoup(content)
     for item in soup.find_all('li', class_='item'):
+        if item.text == "Nenhum jogo encontrado":
+            continue
         info = item.find('div', class_='info')
         teams = item.find('div', class_='teams')
         game_data = dict()
@@ -68,7 +70,7 @@ def get_summary(game_data):
     return summary
 
 
-def convert_ical(cal_data, ical_filename=None):
+def convert_ical(cal_data, ical_filename=ICAL_FILENAME):
     """Convert cal_data to ical format."""
     ical = Calendar()
     for k in cal_data.keys():
@@ -81,10 +83,8 @@ def convert_ical(cal_data, ical_filename=None):
         event.add('description', vText(urljoin(SITE_URL, k)))
         event.add('location', game_data['location'])
         ical.add_component(event)
-    if ical_filename:
-        f = open(ical_filename, 'wb')
+    with open(ical_filename, 'wb') as f:
         f.write(ical.to_ical())
-        f.close()
     return ical.to_ical()
 
 
@@ -95,9 +95,7 @@ def convert_csv(cal_data, csv_filename=CSV_FILENAME):
         'End Date', 'End Time', 'All Day Event',
         'Description', 'Location', 'Private'
     )
-    csv_file = open(csv_filename, "wb")
-    writer = DictWriter(csv_file, fields)
-    writer.writeheader()
+    rows = []
     for k in cal_data.keys():
         game_data = cal_data[k]
         start_date = game_data['dtstart']
@@ -113,20 +111,26 @@ def convert_csv(cal_data, csv_filename=CSV_FILENAME):
             'Location': '%(location)s' % game_data,
             'Private':  'True'
         }
-        writer.writerow(row)
-    csv_file.close()
-    return writer
+        rows.append(row)
+    with open(csv_filename, "wb") as csv_file:
+        writer = DictWriter(csv_file, fields)
+        writer.writeheader()
+        writer.writerows(rows)
+    csv_content = open(csv_file.name, 'r').read()
+    return csv_content
 
 
 def main(argv):
-    full_year = {}
-    for month in range(1, 13):
-        url = urljoin(SITE_URL, CAL_URL % month)
-        html_content = fetch_url(url)
-        parsed_content = parse_content(html_content)
-        full_year.update(parsed_content)
-    convert_csv(full_year)
-    convert_ical(full_year, ical_filename=ICAL_FILENAME)
+    events = {}
+    for year in [2014, 2013, 2012, 2011, 2010]:
+        for month in range(1, 13):
+            url = urljoin(SITE_URL, CAL_URL % (month, year))
+            html_content = fetch_url(url)
+            parsed_content = parse_content(html_content)
+            events.update(parsed_content)
+    convert_csv(events)
+    convert_ical(events)
+    print "%s events converted." % len(events)
 
 
 if __name__ == "__main__":

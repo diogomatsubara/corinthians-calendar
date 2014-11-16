@@ -5,7 +5,7 @@ import pytz
 from tempfile import NamedTemporaryFile
 
 from testtools import TestCase
-from testtools.matchers import DocTestMatches, Contains
+from testtools.matchers import DocTestMatches, Contains, StartsWith
 
 from corinthians_calendar import fetch_url, parse_content, convert_csv, convert_ical
 
@@ -67,9 +67,9 @@ class TestCalendarConverter(TestCase):
             'Description', 'Location', 'Private'
         )
         tmp_file = NamedTemporaryFile()
-        csv_writer= convert_csv(
+        csv = convert_csv(
             parse_content(self.sample_data), csv_filename=tmp_file.name)
-        self.assertEquals(csv_writer.fieldnames, csv_header)
+        self.assertThat(csv, StartsWith(csv_header))
         expected_content = (
             "/site/futebol/jogos/informacoes/?id=506")
         self.assertThat(tmp_file.read(), Contains(expected_content))
