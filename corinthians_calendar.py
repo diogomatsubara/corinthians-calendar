@@ -122,7 +122,7 @@ def convert_csv(cal_data, csv_filename=CSV_FILENAME):
 
 def main(argv):
     events = {}
-    for year in [2014, 2013, 2012, 2011, 2010]:
+    for year in [2015, 2014, 2013, 2012, 2011, 2010]:
         for month in range(1, 13):
             url = urljoin(SITE_URL, CAL_URL % (month, year))
             html_content = fetch_url(url)
