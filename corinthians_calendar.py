@@ -11,10 +11,10 @@ from urllib import urlopen
 from urlparse import urljoin
 
 
-SITE_URL="http://www.corinthians.com.br"
-CAL_URL="site/inc/ajax/jogos/getJogos.asp?mes=%d&ano=%d"
-CSV_FILENAME="/tmp/corinthians-cal.csv"
-ICAL_FILENAME="/tmp/corinthians-ical.ical"
+SITE_URL = "http://www.corinthians.com.br"
+CAL_URL = "site/inc/ajax/jogos/getJogos.asp?mes=%d&ano=%d"
+CSV_FILENAME = "/tmp/corinthians-cal.csv"
+ICAL_FILENAME = "/tmp/corinthians-ical.ical"
 
 tz = pytz.timezone('America/Sao_Paulo')
 
@@ -26,7 +26,7 @@ def fetch_url(url):
 
 
 def parse_content(content):
-    """Parse the given HTML content and return game data."""
+    """Parse the given HTML content and return match data."""
     contents = {}
     soup = BeautifulSoup(content)
     for item in soup.find_all('li', class_='item'):
@@ -34,22 +34,25 @@ def parse_content(content):
             continue
         info = item.find('div', class_='info')
         teams = item.find('div', class_='teams')
-        game_data = dict()
+        match_data = dict()
         day = info.findChildren()[0].text.split()[1].encode('utf8')
         hour = info.findChildren()[2].text.split()[1].encode('utf8')
         dtstart = parse_date(day, hour)
-        game_data['dtstart'] = dtstart.replace(tzinfo=tz)
+        match_data['dtstart'] = dtstart.replace(tzinfo=tz)
         dtend = dtstart + timedelta(hours=2)
-        game_data['dtend'] = dtend.replace(tzinfo=tz)
-        game_data['location'] = info.findChildren()[4].text.replace('Local:', '').strip().encode('utf8')
-        game_data['team_one'] = teams.find('img', class_="team-one").get('alt').encode('utf8')
-        game_data['team_two'] = teams.find('img', class_="team-two").get('alt').encode('utf8')
-        game_data['team_one_score'] = teams.find(
+        match_data['dtend'] = dtend.replace(tzinfo=tz)
+        match_data['location'] = info.findChildren()[4].text.replace(
+            'Local:', '').strip().encode('utf8')
+        match_data['team_one'] = teams.find(
+            'img', class_="team-one").get('alt').encode('utf8')
+        match_data['team_two'] = teams.find(
+            'img', class_="team-two").get('alt').encode('utf8')
+        match_data['team_one_score'] = teams.find(
             'div', class_="team-one-score").text.strip().encode('utf8')
-        game_data['team_two_score'] = teams.find(
+        match_data['team_two_score'] = teams.find(
             'div', class_="team-two-score").text.strip().encode('utf8')
         link = item.find('a').get('href')
-        contents[link] = game_data
+        contents[link] = match_data
     return contents
 
 
@@ -59,14 +62,14 @@ def parse_date(date, time):
     return datetime.strptime(dt, "%d/%m/%y,%Hh%M")
 
 
-def get_summary(game_data):
-    if game_data['team_one_score'] or game_data['team_two_score']:
-        summary = "%s (%s) vs (%s) %s"  % (
-            game_data['team_one'], game_data['team_one_score'],
-            game_data['team_two_score'], game_data['team_two'])
+def get_summary(match_data):
+    if match_data['team_one_score'] or match_data['team_two_score']:
+        summary = "%s (%s) vs (%s) %s" % (
+            match_data['team_one'], match_data['team_one_score'],
+            match_data['team_two_score'], match_data['team_two'])
     else:
         summary = "%s vs %s" % (
-            game_data['team_one'], game_data['team_two'])
+            match_data['team_one'], match_data['team_two'])
     return summary
 
 
@@ -76,12 +79,12 @@ def convert_ical(cal_data, ical_filename=ICAL_FILENAME):
     for k in cal_data.keys():
         event = Event()
         event['uid'] = k
-        game_data = cal_data[k]
-        event.add('dtstart', game_data['dtstart'])
-        event.add('dtend', game_data['dtend'])
-        event.add('summary', get_summary(game_data))
+        match_data = cal_data[k]
+        event.add('dtstart', match_data['dtstart'])
+        event.add('dtend', match_data['dtend'])
+        event.add('summary', get_summary(match_data))
         event.add('description', vText(urljoin(SITE_URL, k)))
-        event.add('location', game_data['location'])
+        event.add('location', match_data['location'])
         ical.add_component(event)
     with open(ical_filename, 'wb') as f:
         f.write(ical.to_ical())
@@ -97,18 +100,18 @@ def convert_csv(cal_data, csv_filename=CSV_FILENAME):
     )
     rows = []
     for k in cal_data.keys():
-        game_data = cal_data[k]
-        start_date = game_data['dtstart']
-        end_date = game_data['dtend']
+        match_data = cal_data[k]
+        start_date = match_data['dtstart']
+        end_date = match_data['dtend']
         row = {
-            'Subject': "%s" % get_summary(game_data),
+            'Subject': "%s" % get_summary(match_data),
             'Start Date': '%s' % start_date.strftime('%d/%m/%y'),
             'Start Time': '%s' % start_date.strftime('%H:%M'),
             'End Date': '%s' % end_date.strftime('%d/%m/%y'),
             'End Time': '%s' % end_date.strftime('%H:%M'),
             'All Day Event': 'False',
             'Description': '%s' % urljoin(SITE_URL, k),
-            'Location': '%(location)s' % game_data,
+            'Location': '%(location)s' % match_data,
             'Private':  'True'
         }
         rows.append(row)

@@ -1,5 +1,5 @@
 import datetime
-import doctest
+from doctest import ELLIPSIS, NORMALIZE_WHITESPACE, REPORT_NDIFF
 import os.path
 import pytz
 from tempfile import NamedTemporaryFile
@@ -7,9 +7,16 @@ from tempfile import NamedTemporaryFile
 from testtools import TestCase
 from testtools.matchers import DocTestMatches, Contains, StartsWith
 
-from corinthians_calendar import fetch_url, parse_content, convert_csv, convert_ical
+from corinthians_calendar import (
+    convert_csv,
+    convert_ical,
+    fetch_url,
+    parse_content
+    )
+
 
 tz = pytz.timezone('America/Sao_Paulo')
+
 
 class TestCalendarConverter(TestCase):
 
@@ -27,7 +34,7 @@ class TestCalendarConverter(TestCase):
         expected_content = {
             '/site/futebol/jogos/informacoes/?id=510': {
                 'dtstart': datetime.datetime(2014, 11, 30, 0, 0, tzinfo=tz),
-                'dtend': datetime.datetime(2014,11,30, 2, 0, tzinfo=tz),
+                'dtend': datetime.datetime(2014, 11, 30, 2, 0, tzinfo=tz),
                 'location': u'A definir',
                 'team_one': u'Fluminense',
                 'team_one_score': '',
@@ -49,15 +56,14 @@ class TestCalendarConverter(TestCase):
             DTSTART;TZID=America/Sao_Paulo;VALUE=DATE-TIME:20141116T170000\r
             DTEND;TZID=America/Sao_Paulo;VALUE=DATE-TIME:20141116T190000\r
             UID:/site/futebol/jogos/informacoes/?id=507\r
-            DESCRIPTION:http://www.corinthians.com.br/site/futebol/jogos/informacoes/?\r\n id=507\r
+            DESCRIPTION:http://www.corinthians.com.br/.../?\r\n id=507\r
             LOCATION:Fonte Nova\r
             END:VEVENT
             ...
             END:VCALENDAR
-            """
-        )
+            """)
 
-        flags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE | doctest.REPORT_NDIFF
+        flags = ELLIPSIS | NORMALIZE_WHITESPACE | REPORT_NDIFF
         self.assertThat(ical, DocTestMatches(expected_ical, flags))
 
     def test_convert_csv(self):
