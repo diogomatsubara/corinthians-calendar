@@ -7,59 +7,60 @@ from datetime import datetime, timedelta
 from icalendar import Calendar, Event, vText
 import pytz
 import sys
-from urllib import urlopen
+from urllib import urlencode, urlopen
 from urlparse import urljoin
 
 
 SITE_URL = "http://www.corinthians.com.br"
-CAL_URL = "site/inc/ajax/jogos/getJogos.asp?mes=%d&ano=%d"
 CSV_FILENAME = "/tmp/corinthians-cal.csv"
 ICAL_FILENAME = "/tmp/corinthians-ical.ical"
 
 tz = pytz.timezone('America/Sao_Paulo')
 
 
-def fetch_url(url):
+def fetch_url(url, data=None):
     """Fetch the given URL and return its HTML."""
-    content = urlopen(url).read()
+    if data:
+        data = urlencode(data)
+    content = urlopen(url, data=data).read()
     return content
 
 
-def parse_content(content):
+def parse_content(year, content):
     """Parse the given HTML content and return match data."""
     contents = {}
     soup = BeautifulSoup(content)
-    for item in soup.find_all('li', class_='item'):
-        if item.text == "Nenhum jogo encontrado":
-            continue
+    for links_tag in soup.find_all('div', class_='links'):
+        item = links_tag.findParent()
+        date = item.find('div', class_='data')
         info = item.find('div', class_='info')
         teams = item.find('div', class_='teams')
         match_data = dict()
-        day = info.findChildren()[0].text.split()[1].encode('utf8')
-        hour = info.findChildren()[2].text.split()[1].encode('utf8')
-        dtstart = parse_date(day, hour)
+        datetimestr = date.find('span').text.encode('utf8')
+        dtstart = parse_date(year, datetimestr)
         match_data['dtstart'] = dtstart.replace(tzinfo=tz)
         dtend = dtstart + timedelta(hours=2)
         match_data['dtend'] = dtend.replace(tzinfo=tz)
-        match_data['location'] = info.findChildren()[4].text.replace(
-            'Local:', '').strip().encode('utf8')
+        location = info.find(
+            'span', class_='icon icon-local').findParent().text
+        match_data['location'] = location.strip().encode('utf8')
         match_data['team_one'] = teams.find(
-            'img', class_="team-one").get('alt').encode('utf8')
+            'img', class_="img-team-one").get('alt').encode('utf8')
         match_data['team_two'] = teams.find(
-            'img', class_="team-two").get('alt').encode('utf8')
+            'img', class_="img-team-two").get('alt').encode('utf8')
         match_data['team_one_score'] = teams.find(
             'div', class_="team-one-score").text.strip().encode('utf8')
         match_data['team_two_score'] = teams.find(
             'div', class_="team-two-score").text.strip().encode('utf8')
-        link = item.find('a').get('href')
+        link = teams.find('a').get('href')
         contents[link] = match_data
     return contents
 
 
-def parse_date(date, time):
-    """For a given date and time return parsed datetime."""
-    dt = ','.join((date, time))
-    return datetime.strptime(dt, "%d/%m/%y,%Hh%M")
+def parse_date(year, datetimestr):
+    """Return datetime object from year (%Y) and datetimestr (%d/%m%Hh%M)."""
+    dt = '/'.join((str(year), datetimestr))
+    return datetime.strptime(dt, "%Y/%d/%m%Hh%M")
 
 
 def get_summary(match_data):
@@ -125,12 +126,14 @@ def convert_csv(cal_data, csv_filename=CSV_FILENAME):
 
 def main(argv):
     events = {}
-    for year in [2015, 2014, 2013, 2012, 2011, 2010]:
-        for month in range(1, 13):
-            url = urljoin(SITE_URL, CAL_URL % (month, year))
-            html_content = fetch_url(url)
-            parsed_content = parse_content(html_content)
-            events.update(parsed_content)
+    for year in [2016, 2015, 2014, 2013, 2012, 2011, 2010, 2009, 2008]:
+        data = {'ano': year}
+        url = urljoin(SITE_URL, 'jogos/ajax_jogos')
+        html_content = fetch_url(url, data=data)
+        # html_content doesn't have year so we have to pass on the info to the
+        # function so it'll build the data structure with the correct dates.
+        parsed_content = parse_content(year, html_content)
+        events.update(parsed_content)
     convert_csv(events)
     convert_ical(events)
     print "%s events converted." % len(events)
