@@ -29,7 +29,7 @@ def fetch_url(url, data=None):
 def parse_content(year, content):
     """Parse the given HTML content and return match data."""
     contents = {}
-    soup = BeautifulSoup(content)
+    soup = BeautifulSoup(content, 'lxml')
     for links_tag in soup.find_all('div', class_='links'):
         item = links_tag.findParent()
         date = item.find('div', class_='data')
