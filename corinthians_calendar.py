@@ -19,11 +19,17 @@ ICAL_FILENAME = "/tmp/corinthians-ical.ical"
 tz = pytz.timezone('America/Sao_Paulo')
 
 
-def fetch_url(url, data=None):
+def fetch_url(url, data=None, verbose=False):
     """Fetch the given URL and return its HTML."""
     if data:
         data = urlencode(data)
-    content = urlopen(url, data=data).read()
+    response = urlopen(url, data=data)
+    if verbose:
+        print 'Got URL: %s' % response.geturl()
+        print 'HTTP status returned: %s' % response.getcode()
+        if response.getcode() != 200:
+            print 'HTTP info: %s' % response.getinfo()
+    content = response.read()
     return content
 
 
@@ -134,7 +140,9 @@ def main(argv):
     for year in [2016, 2015, 2014, 2013, 2012, 2011, 2010, 2009, 2008]:
         data = {'ano': year}
         url = urljoin(SITE_URL, 'jogos/ajax_jogos')
-        html_content = fetch_url(url, data=data)
+        if args.verbose:
+            print 'Fetching URL'
+        html_content = fetch_url(url, data=data, verbose=args.verbose)
         # html_content doesn't have year so we have to pass on the info to the
         # function so it'll build the data structure with the correct dates.
         if args.verbose:
