@@ -1,6 +1,7 @@
 # Fetch info about the calendar from corinthians.com and convert to gcal
 # format.
 
+import argparse
 from bs4 import BeautifulSoup
 from csv import DictWriter
 from datetime import datetime, timedelta
@@ -125,6 +126,10 @@ def convert_csv(cal_data, csv_filename=CSV_FILENAME):
 
 
 def main(argv):
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--verbose', help='Increase output', action='store_true')
+    args = parser.parse_args()
     events = {}
     for year in [2016, 2015, 2014, 2013, 2012, 2011, 2010, 2009, 2008]:
         data = {'ano': year}
@@ -132,7 +137,11 @@ def main(argv):
         html_content = fetch_url(url, data=data)
         # html_content doesn't have year so we have to pass on the info to the
         # function so it'll build the data structure with the correct dates.
+        if args.verbose:
+            print 'Parsing content for %s' % year
         parsed_content = parse_content(year, html_content)
+        if args.verbose:
+            print '%s events for %s.' % (len(parsed_content), year)
         events.update(parsed_content)
     convert_csv(events)
     convert_ical(events)
